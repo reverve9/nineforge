@@ -25,16 +25,15 @@ SELECT
   v.venue_type    AS venue_type,
   v.address       AS venue_address,
   v.location      AS venue_location,
-  r.region_code,
-  r.region_name,
+  r.code          AS region_code,
+  r.name          AS region_name,
   r.sido_code,
-  r.sido_name,
-  r.sigungu_code,
-  r.sigungu_name,
-  r.level         AS region_level
+  r.sgg_code,
+  r.umd_code,
+  r.is_deprecated AS region_is_deprecated
 FROM fact_event e
-LEFT JOIN dim_venue  v ON v.id         = e.venue_id
-LEFT JOIN dim_region r ON r.region_code = COALESCE(e.region_code, v.region_code);
+LEFT JOIN dim_venue  v ON v.id   = e.venue_id
+LEFT JOIN dim_region r ON r.code = COALESCE(e.region_code, v.region_code);
 
 -- ──────────────────────────────────────────────────────────────
 -- view_metrics_enriched
@@ -55,19 +54,18 @@ SELECT
   m.metadata,
   m.fetched_at,
   m.ingested_at,
-  r.region_code,
-  r.region_name,
+  r.code          AS region_code,
+  r.name          AS region_name,
   r.sido_code,
-  r.sido_name,
-  r.sigungu_code,
-  r.sigungu_name,
-  r.level         AS region_level,
+  r.sgg_code,
+  r.umd_code,
+  r.is_deprecated AS region_is_deprecated,
   v.id            AS venue_id,
   v.name          AS venue_name,
   v.venue_type    AS venue_type
 FROM fact_metric m
-LEFT JOIN dim_region r ON r.region_code = m.region_code
-LEFT JOIN dim_venue  v ON v.id         = m.venue_id;
+LEFT JOIN dim_region r ON r.code = m.region_code
+LEFT JOIN dim_venue  v ON v.id   = m.venue_id;
 
 -- ──────────────────────────────────────────────────────────────
 -- view_venues_enriched
@@ -86,15 +84,14 @@ SELECT
   v.metadata,
   v.created_at,
   v.updated_at,
-  r.region_code,
-  r.region_name,
+  r.code          AS region_code,
+  r.name          AS region_name,
   r.sido_code,
-  r.sido_name,
-  r.sigungu_code,
-  r.sigungu_name,
-  r.level         AS region_level
+  r.sgg_code,
+  r.umd_code,
+  r.is_deprecated AS region_is_deprecated
 FROM dim_venue v
-LEFT JOIN dim_region r ON r.region_code = v.region_code;
+LEFT JOIN dim_region r ON r.code = v.region_code;
 
 -- ──────────────────────────────────────────────────────────────
 -- mv_monthly_tourism  (datalab-sourced monthly metrics)

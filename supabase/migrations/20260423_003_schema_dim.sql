@@ -75,43 +75,52 @@ CREATE TABLE IF NOT EXISTS dim_tag_pending (
 CREATE INDEX IF NOT EXISTS idx_dim_tag_pending_status ON dim_tag_pending (status);
 
 -- ──────────────────────────────────────────────────────────────
--- dim_region  (법정동코드 10-digit master)
+-- dim_region  (법정동코드 10-digit master — MOIS 행정표준코드 기준)
+-- Loader: _dev/scripts/load_legal_dong_code.ts (file optional; table
+-- stays empty if source file is absent).
 -- ──────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS dim_region (
-  region_code         TEXT                          PRIMARY KEY,
-  region_name         TEXT                          NOT NULL,
-  sido_code           TEXT,
-  sido_name           TEXT,
-  sigungu_code        TEXT,
-  sigungu_name        TEXT,
-  eupmyeondong_code   TEXT,
-  eupmyeondong_name   TEXT,
-  level               TEXT,
-  parent_code         TEXT                          REFERENCES dim_region(region_code) ON UPDATE CASCADE ON DELETE SET NULL,
-  bbox                GEOMETRY(Polygon, 4326),
-  centroid            GEOGRAPHY(Point, 4326)
+  code           TEXT                          PRIMARY KEY,
+  name           TEXT                          NOT NULL,
+  is_deprecated  BOOLEAN                       NOT NULL DEFAULT false,
+  sido_code      TEXT GENERATED ALWAYS AS (substring(code, 1, 2)) STORED,
+  sgg_code       TEXT GENERATED ALWAYS AS (substring(code, 1, 5)) STORED,
+  umd_code       TEXT GENERATED ALWAYS AS (substring(code, 1, 8)) STORED,
+  bbox           GEOMETRY(Polygon, 4326),
+  centroid       GEOGRAPHY(Point, 4326),
+  ingested_at    TIMESTAMPTZ                   NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_dim_region_sido      ON dim_region (sido_code);
-CREATE INDEX IF NOT EXISTS idx_dim_region_sigungu   ON dim_region (sigungu_code);
-CREATE INDEX IF NOT EXISTS idx_dim_region_parent    ON dim_region (parent_code);
-CREATE INDEX IF NOT EXISTS idx_dim_region_centroid  ON dim_region USING GIST (centroid);
-CREATE INDEX IF NOT EXISTS idx_dim_region_bbox      ON dim_region USING GIST (bbox);
+CREATE INDEX IF NOT EXISTS idx_dim_region_sido          ON dim_region (sido_code);
+CREATE INDEX IF NOT EXISTS idx_dim_region_sgg           ON dim_region (sgg_code);
+CREATE INDEX IF NOT EXISTS idx_dim_region_umd           ON dim_region (umd_code);
+CREATE INDEX IF NOT EXISTS idx_dim_region_is_deprecated ON dim_region (is_deprecated);
+CREATE INDEX IF NOT EXISTS idx_dim_region_centroid      ON dim_region USING GIST (centroid);
+CREATE INDEX IF NOT EXISTS idx_dim_region_bbox          ON dim_region USING GIST (bbox);
 
 -- ──────────────────────────────────────────────────────────────
 -- dim_region_code_map  (source-specific region codes → 법정동)
+-- P0 leaves this empty; P1 adapters populate on first sync.
 -- ──────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS dim_region_code_map (
-  id              UUID  PRIMARY KEY DEFAULT gen_random_uuid(),
-  region_code     TEXT  NOT NULL REFERENCES dim_region(region_code) ON UPDATE CASCADE ON DELETE RESTRICT,
-  source          TEXT  NOT NULL,
-  external_code   TEXT  NOT NULL,
-  external_name   TEXT,
-  notes           TEXT,
-  UNIQUE (source, external_code)
+  source            TEXT        NOT NULL,
+  source_code       TEXT        NOT NULL,
+  legal_dong_code   TEXT        NOT NULL REFERENCES dim_region(code) ON UPDATE CASCADE ON DELETE RESTRICT,
+  matched_level     TEXT        NOT NULL CHECK (matched_level IN ('sido', 'sgg', 'umd')),
+  notes             TEXT,
+  ingested_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (source, source_code)
 );
 
-CREATE INDEX IF NOT EXISTS idx_dim_region_code_map_region ON dim_region_code_map (region_code);
+CREATE INDEX IF NOT EXISTS idx_dim_region_code_map_legal_dong ON dim_region_code_map (legal_dong_code);
+
+COMMENT ON TABLE dim_region_code_map IS
+  '소스별 지역코드 → 법정동코드 매핑. P1 각 어댑터 첫 sync 시 동적 생성.
+레퍼런스:
+- tourapi: KorService2/areaCode2 엔드포인트 (apis.data.go.kr/B551011/KorService2)
+- datalab: 한국관광데이터랩 지역코드 체계 (TourAPI 와 사실상 동일 가정, P1 어댑터에서 검증)
+- kopis: 공연예술통합전산망 개발가이드 PDF 부록의 지역코드표 (한글 문자열)
+- sbiz: 법정동코드 그대로 사용. 본 매핑 테이블 미경유';
 
 -- ──────────────────────────────────────────────────────────────
 -- dim_venue
@@ -123,7 +132,7 @@ CREATE TABLE IF NOT EXISTS dim_venue (
   venue_type        TEXT                        NOT NULL,
   name              TEXT                        NOT NULL,
   address           TEXT,
-  region_code       TEXT                        REFERENCES dim_region(region_code) ON UPDATE CASCADE ON DELETE SET NULL,
+  region_code       TEXT                        REFERENCES dim_region(code) ON UPDATE CASCADE ON DELETE SET NULL,
   location          GEOGRAPHY(Point, 4326),
   categories        TEXT[]                      NOT NULL DEFAULT '{}',
   tags              TEXT[]                      NOT NULL DEFAULT '{}',
