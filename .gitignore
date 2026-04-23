@@ -23,3 +23,8 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Seed raw data (regenerate from public sources)
+_dev/seeds/*.txt
+_dev/seeds/*.csv
+_dev/seeds/*.zip
