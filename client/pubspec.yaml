@@ -1,0 +1,44 @@
+name: nineforge
+description: "Nine Forge — 공공데이터 큐레이션 워크벤치 (macOS client)"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.0
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management (2.x family — dev tooling below is pinned to 2.x)
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # macOS-native UI patterns
+  macos_ui: ^2.2.2
+
+  # Routing
+  go_router: ^17.2.2
+
+  # Supabase SDK
+  supabase_flutter: ^2.12.4
+
+  # Deferred-use deps (registered now; no call sites until P2+)
+  fl_chart: ^1.2.0
+  flutter_map: ^8.3.0
+  excel: ^4.0.6
+  pdf: ^3.12.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+  build_runner: ^2.4.14
+  riverpod_generator: ^2.6.4
+  custom_lint: ^0.7.0
+  riverpod_lint: ^2.6.4
+
+flutter:
+  uses-material-design: true
